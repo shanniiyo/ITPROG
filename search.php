@@ -23,7 +23,7 @@ $result = $conn->query($sql);
 <!DOCTYPE html>
 <html>
 <head>
-<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="style(itprog).css">
 </head>
 <body>
 
