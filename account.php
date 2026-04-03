@@ -94,7 +94,7 @@ $user   = mysqli_fetch_assoc($result);
 </head>
 <body>
 
-<?php include 'navbar.php'; ?>
+<?php include 'navbar_client.php'; ?>
 
 <div class="page">
   <div class="container account-wrapper">

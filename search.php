@@ -32,20 +32,7 @@ $result = $conn->query($sql);
 </head>
 <body>
 
-<div class="navbar">
-   <a href = "index.php"> <h2>SmartLocker</h2> </a>
-  <a href = "search.php"> Search lockers </a>
-  <a href = ""> My Reservations </a>
-  <a href = ""> Notifications </a>
-  <a href = "support.php"> Support </a>
-
-  <div class = "nav--right">
-  <a href = ""> Account </a>
-  <a href = "logout.php"> Log Out </a>
-</div>
-</div>
-
-
+<?php include 'navbar_client.php'; ?>
 
 <div class="container">
 
