@@ -1,13 +1,18 @@
 <?php
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+
+include 'db_connect.php';
+
+
 session_start();
-include "config.php";
 
 // GET FILTER VALUES
 $location = $_GET['location'] ?? '';
 $size = $_GET['size'] ?? '';
 
 // SQL QUERY
-$sql = "SELECT * FROM lockers WHERE status='Available'";
+$sql = "SELECT * FROM locker_rsvp WHERE status='available'";
 
 if ($location != '') {
   $sql .= " AND location='$location'";
@@ -28,8 +33,19 @@ $result = $conn->query($sql);
 <body>
 
 <div class="navbar">
-  <h2>SmartLocker</h2>
+   <a href = "index.php"> <h2>SmartLocker</h2> </a>
+  <a href = "search.php"> Search lockers </a>
+  <a href = ""> My Reservations </a>
+  <a href = ""> Notifications </a>
+  <a href = "support.php"> Support </a>
+
+  <div class = "nav--right">
+  <a href = ""> Account </a>
+  <a href = "logout.php"> Log Out </a>
 </div>
+</div>
+
+
 
 <div class="container">
 
@@ -65,11 +81,11 @@ if ($result->num_rows > 0) {
 ?>
 
   <div class="locker-card">
-    <h3>Locker <?php echo $row['locker_code']; ?></h3>
+    <h3>Locker <?php echo $row['locker_id']; ?></h3>
     <span class="badge"><?php echo $row['status']; ?></span>
     <p>📍 <?php echo $row['location']; ?></p>
     <p>Size: <?php echo $row['size']; ?></p>
-    <h2>₱<?php echo $row['price']; ?>/hour</h2>
+    <h2>₱<?php echo $row['pricer_per_hr']; ?>/hour</h2>
     <button>Reserve</button>
   </div>
 

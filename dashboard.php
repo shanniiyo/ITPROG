@@ -10,7 +10,7 @@ $result = mysqli_query($conn, $sql);
 <!DOCTYPE html>
 <html>
 <head>
-<link rel="stylesheet" href="style(itprog).css">
+<link rel="stylesheet" href="style.css">
 <title>Locker Inventory</title>
 </head>
 <body>
@@ -18,7 +18,7 @@ $result = mysqli_query($conn, $sql);
 <h2>Locker Inventory</h2>
 <a href="add_locker.php">+ Add Locker</a>
 
-<div style="display:flex; flex-wrap:wrap; gap:20px;">
+<div style="display:flex; flex-wrap:wrap; gap:30px;">
 
 <?php while ($row = mysqli_fetch_assoc($result)) { ?>
   <div style="border:1px solid #ccc; padding:15px; width:250px; border-radius:10px;">
