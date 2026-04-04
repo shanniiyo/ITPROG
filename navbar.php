@@ -20,7 +20,7 @@
       <a href="add_locker.php" class="nav__item">
         <img src="images/icon-bell.png" class="nav__icon" alt="">
         Add New Locker
-    <a href="" class="nav__item">
+      <a href="reports.php" class="nav__item">
         <img src="images/icon-reservations.png" class="nav__icon" alt="">
         Reports
       </a>

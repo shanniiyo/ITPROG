@@ -743,3 +743,91 @@ body {
   opacity: 0.9;
   transform: translateY(-1px);
 }
+
+/* =========================
+   REPORTS PAGE SPECIFIC
+   ========================= */
+
+/* Table layout for logs */
+.report-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 20px;
+  background: #ffffff;
+}
+
+.report-table th {
+  text-align: left;
+  padding: 12px 16px;
+  background: #f8fafc;
+  border-bottom: 2px solid #e2e8f0;
+  color: #64748b;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 700;
+}
+
+.report-table td {
+  padding: 14px 16px;
+  border-bottom: 1px solid #f1f5f9;
+  font-size: 14px;
+  color: #334155;
+  vertical-align: middle;
+}
+
+/* Wrapping long support messages so they don't break the layout */
+.td--message {
+  max-width: 400px;
+  line-height: 1.5;
+  color: #475569;
+  word-wrap: break-word;
+  font-size: 13.5px;
+}
+
+/* Subjects & Issue Types as Badges */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+/* Subject: Reservation/Payment Badge */
+.badge--info {
+  background: #e0f2fe;
+  color: #0369a1;
+}
+
+/* Subject: Issues/Warnings Badge */
+.badge--warn {
+  background: #fef2f2;
+  color: #b91c1c;
+}
+
+/* Interaction for Email links */
+.link--email {
+  color: #0ea5e9;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.link--email:hover {
+  text-decoration: underline;
+}
+
+/* Layout for the panel body inside reports */
+.panel__body {
+  padding: 0 10px 10px;
+  overflow-x: auto; /* Adds scrollbar if table is too wide for mobile */
+}
+
+/* Style for "Logged in as" text */
+.admin-meta {
+  text-align: center;
+  font-size: 13px;
+  color: #64748b;
+  margin-bottom: 30px;
+}

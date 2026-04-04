@@ -1,10 +1,50 @@
 <?php
+session_start();
+include 'db_connect.php';
 /**
  * support.php (PHP-ready)
  * - Forms are front-end only for now.
  * - Later: set form action to a handler (e.g., support_submit.php / issue_submit.php)
  * - Later: add validation + DB insert + email notifications
  */
+$feedback_msg = "";
+
+if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+    
+    // for support_messages
+    if (isset($_POST['message'])) {
+        $name = $_POST['name'];
+        $email = $_POST['email'];
+        $subject = $_POST['subject'];
+        $message = $_POST['message'];
+
+        $stmt = $conn->prepare("INSERT INTO support_messages (name, email, subject, message) VALUES (?, ?, ?, ?)");
+        $stmt->bind_param("ssss", $name, $email, $subject, $message);
+        
+        if ($stmt->execute()) {
+            $feedback_msg = "Thank you! Your message has been sent.";
+        }
+    } 
+    
+    // for locker_reports
+    else if (isset($_POST['locker_id'])) {
+        $rsvp_id = $_POST['reservation_no'];
+        $locker_id = $_POST['locker_id'];
+        $issue_type = $_POST['issue_type'];
+        $description = $_POST['issue_desc'];
+
+        $stmt = $conn->prepare("INSERT INTO locker_reports (rsvp_id, locker_id, issue_type, description) VALUES (?, ?, ?, ?)");
+        $stmt->bind_param("ssss", $rsvp_id, $locker_id, $issue_type, $description);
+        
+        if ($stmt->execute()) {
+            $feedback_msg = "Locker report submitted. Our staff will check it shortly.";
+        }
+    } else {
+        $feedback_msg = "Error: Reservation #$rsvp_id was not found in our records.";
+    }
+}
+?>
+
 ?>
 <!doctype html>
 <html lang="en">
