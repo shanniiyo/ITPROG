@@ -6,6 +6,16 @@ include 'db_connect.php';
 
 session_start();
 
+// Auto-expire reservations that have passed their end_time
+$conn->query("UPDATE rsvp_details SET status='expired' WHERE status='active' AND end_time < NOW()");
+
+// Free up lockers that no longer have any active reservation
+$conn->query("UPDATE locker_rsvp SET status='available'
+              WHERE locker_id NOT IN (
+                SELECT locker_id FROM rsvp_details WHERE status='active'
+              )
+              AND status='occupied'");
+
 // GET FILTER VALUES
 $location = isset($_GET['location']) ? mysqli_real_escape_string($conn, $_GET['location']) : '';
 $size     = isset($_GET['size'])     ? mysqli_real_escape_string($conn, $_GET['size'])     : '';
