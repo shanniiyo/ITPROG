@@ -5,8 +5,39 @@ ini_set('display_errors', 1);
 include 'db_connect.php';
 
 session_start();
+include 'mailer.php';
 
 // Auto-expire reservations that have passed their end_time
+// First, find reservations that are about to expire (within 2 hours) and haven't been reminded yet
+// We use a 'expiration_reminder' check — only send once per reservation
+$remind_sql = "SELECT rd.rsvp_id, rd.user_id, rd.end_time, rd.created_at,
+                      u.email, u.full_name
+               FROM rsvp_details rd
+               JOIN users u ON rd.user_id = u.user_id
+               WHERE rd.status = 'active'
+                 AND rd.end_time BETWEEN NOW() AND DATE_ADD(NOW(), INTERVAL 2 HOUR)
+                 AND rd.rsvp_id NOT IN (
+                   SELECT rsvp_id FROM notifications
+                   WHERE type = 'expiration_reminder'
+                   AND rsvp_id IS NOT NULL
+                 )";
+$remind_res = mysqli_query($conn, $remind_sql);
+if ($remind_res && mysqli_num_rows($remind_res) > 0) {
+    while ($row = mysqli_fetch_assoc($remind_res)) {
+        $rsvp_num = 'SL-' . date('Y', strtotime($row['created_at'])) . '-' . str_pad($row['rsvp_id'], 6, '0', STR_PAD_LEFT);
+        notify_expiration(
+            $conn,
+            $row['user_id'],
+            $row['rsvp_id'],
+            $row['email'],
+            $row['full_name'],
+            $rsvp_num,
+            date('M d, Y h:i A', strtotime($row['end_time']))
+        );
+    }
+}
+
+// Now expire reservations past their end_time
 $conn->query("UPDATE rsvp_details SET status='expired' WHERE status='active' AND end_time < NOW()");
 
 // Free up lockers that no longer have any active reservation
