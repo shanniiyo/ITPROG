@@ -8,6 +8,7 @@
  */
 session_start();
 include 'db_connect.php';
+include 'mailer.php';
 
 // Must be logged in
 if (!isset($_SESSION['user_id'])) {
@@ -112,6 +113,28 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 'full_name'          => $_SESSION['full_name'],
             ];
             unset($_SESSION['pending_reservation']);
+
+            // --- Send simulated confirmation email ---
+            // Fetch the user's email
+            $user_res  = mysqli_query($conn, "SELECT email FROM users WHERE user_id=$user_id LIMIT 1");
+            $user_row  = mysqli_fetch_assoc($user_res);
+            $user_email = $user_row['email'];
+
+            notify_confirmation(
+                $conn,
+                $user_id,
+                $rsvp_id,
+                $user_email,
+                $_SESSION['full_name'],
+                $reservation_number,
+                $locker_id,
+                $size_labels[$locker['size']],
+                $locker['location'],
+                date('M d, Y h:i A', strtotime($start_time)),
+                date('M d, Y h:i A', strtotime($end_time)),
+                number_format($total_price, 2),
+                $access_code
+            );
 
             header("Location: receipt.php");
             exit();
