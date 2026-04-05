@@ -13,6 +13,7 @@
  */
 session_start();
 include 'db_connect.php';
+include 'mailer.php';
 
 if (!isset($_SESSION['user_id'])) {
     header("Location: login.php");
@@ -28,7 +29,7 @@ if (isset($_GET['action']) && $_GET['action'] == 'cancel' && isset($_GET['rsvp_i
     $rsvp_id = (int) $_GET['rsvp_id'];
 
     // Fetch the reservation to verify it belongs to this user
-    $check_sql = "SELECT rd.*, lr.locker_id as lid
+    $check_sql = "SELECT rd.*, lr.locker_id as lid, lr.location
                   FROM rsvp_details rd
                   JOIN locker_rsvp lr ON rd.locker_id = lr.locker_id
                   WHERE rd.rsvp_id=$rsvp_id AND rd.user_id=$user_id LIMIT 1";
@@ -44,6 +45,13 @@ if (isset($_GET['action']) && $_GET['action'] == 'cancel' && isset($_GET['rsvp_i
             // Cancel allowed — free up locker
             mysqli_query($conn, "UPDATE rsvp_details SET status='cancelled' WHERE rsvp_id=$rsvp_id");
             mysqli_query($conn, "UPDATE locker_rsvp SET status='available' WHERE locker_id=" . $rsvp['locker_id']);
+
+            // Send cancellation email
+            $u_res   = mysqli_query($conn, "SELECT email, full_name FROM users WHERE user_id=$user_id LIMIT 1");
+            $u_row   = mysqli_fetch_assoc($u_res);
+            $rsvp_num = 'SL-' . date('Y', strtotime($rsvp['created_at'])) . '-' . str_pad($rsvp_id, 6, '0', STR_PAD_LEFT);
+            notify_cancellation($conn, $user_id, $rsvp_id, $u_row['email'], $u_row['full_name'], $rsvp_num, $rsvp['locker_id'], $rsvp['location']);
+
             $message  = "Reservation cancelled successfully. Your locker has been released.";
             $msg_type = 'success';
         } elseif ($diff_hrs <= 12 && $diff_hrs > 0) {
@@ -101,6 +109,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
             $pay_sql      = "INSERT INTO payments (rsvp_id, amount_paid, payment_method, payment_status, transaction_ref, rate_type)
                              VALUES ($rsvp_id, $ext_cost, 'card', 'paid', '$tx_ref', '$rate_type')";
             mysqli_query($conn, $pay_sql);
+
+            // Send extension email
+            $u_res    = mysqli_query($conn, "SELECT email, full_name FROM users WHERE user_id=$user_id LIMIT 1");
+            $u_row    = mysqli_fetch_assoc($u_res);
+            $rsvp_num = 'SL-' . date('Y', strtotime($rsvp['created_at'])) . '-' . str_pad($rsvp_id, 6, '0', STR_PAD_LEFT);
+            notify_extension($conn, $user_id, $rsvp_id, $u_row['email'], $u_row['full_name'], $rsvp_num, date('M d, Y h:i A', $new_end_ts), $extra, $rate_type, number_format($ext_cost, 2));
 
             $message  = "Reservation extended to " . date('M d, Y h:i A', $new_end_ts) . ". Additional charge: ₱" . number_format($ext_cost, 2);
             $msg_type = 'success';
