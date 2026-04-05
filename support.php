@@ -1,10 +1,50 @@
 <?php
+session_start();
+include 'db_connect.php';
 /**
  * support.php (PHP-ready)
  * - Forms are front-end only for now.
  * - Later: set form action to a handler (e.g., support_submit.php / issue_submit.php)
  * - Later: add validation + DB insert + email notifications
  */
+$feedback_msg = "";
+
+if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+    
+    // for support_messages
+    if (isset($_POST['message'])) {
+        $name = $_POST['name'];
+        $email = $_POST['email'];
+        $subject = $_POST['subject'];
+        $message = $_POST['message'];
+
+        $stmt = $conn->prepare("INSERT INTO support_messages (name, email, subject, message) VALUES (?, ?, ?, ?)");
+        $stmt->bind_param("ssss", $name, $email, $subject, $message);
+        
+        if ($stmt->execute()) {
+            $feedback_msg = "Thank you! Your message has been sent.";
+        }
+    } 
+    
+    // for locker_reports
+    else if (isset($_POST['locker_id'])) {
+        $rsvp_id = $_POST['reservation_no'];
+        $locker_id = $_POST['locker_id'];
+        $issue_type = $_POST['issue_type'];
+        $description = $_POST['issue_desc'];
+
+        $stmt = $conn->prepare("INSERT INTO locker_reports (rsvp_id, locker_id, issue_type, description) VALUES (?, ?, ?, ?)");
+        $stmt->bind_param("ssss", $rsvp_id, $locker_id, $issue_type, $description);
+        
+        if ($stmt->execute()) {
+            $feedback_msg = "Locker report submitted. Our staff will check it shortly.";
+        }
+    } else {
+        $feedback_msg = "Error: Reservation #$rsvp_id was not found in our records.";
+    }
+}
+?>
+
 ?>
 <!doctype html>
 <html lang="en">
@@ -18,54 +58,8 @@
 </head>
 <body>
 
-<!-- =========================
-     TOP NAV (same as other pages)
-========================= -->
-<header class="topbar">
-  <div class="container topbar__row">
+<?php include 'navbar_client.php'; ?>
 
-    <div class="brand">
-      <div class="brand__icon">
-        <!-- Replace later -->
-        <img src="images/logo.png" alt="SmartLocker Logo">
-      </div>
-      <div class="brand__name">SmartLocker</div>
-    </div>
-
-    <nav class="nav" aria-label="Primary">
-      <a href="search.php" class="nav__item">
-        <img src="images/icon-search.png" class="nav__icon" alt="">
-        Search Lockers
-      </a>
-      <a href="reservations.php" class="nav__item">
-        <img src="images/icon-reservations.png" class="nav__icon" alt="">
-        My Reservations
-      </a>
-      <a href="notifications.php" class="nav__item">
-        <img src="images/icon-bell.png" class="nav__icon" alt="">
-        Notifications
-      </a>
-
-      <!-- Active page -->
-      <a href="support.php" class="nav__item nav__item--active">
-        <img src="images/icon-support.png" class="nav__icon" alt="">
-        Support
-      </a>
-    </nav>
-
-    <div class="nav nav--right" aria-label="Account">
-      <a href="account.php" class="nav__item">
-        <img src="images/icon-user.png" class="nav__icon" alt="">
-        Account
-      </a>
-      <a href="logout.php" class="nav__item">
-        <img src="images/icon-logout.png" class="nav__icon" alt="">
-        Logout
-      </a>
-    </div>
-
-  </div>
-</header>
 
 <!-- =========================
      PAGE CONTENT
