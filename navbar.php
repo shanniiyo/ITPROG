@@ -8,7 +8,7 @@ $nav_name = $_SESSION['admin_name'] ?? 'Admin';
 
     <div class="brand">
       <div class="brand__icon">
-        <img src="images/logo.png" alt="SmartLocker Logo">
+        🔒
       </div>
       <div class="brand__name">SmartLocker</div>
     </div>

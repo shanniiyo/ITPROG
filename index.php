@@ -2,8 +2,6 @@
 /**
  * SmartLocker Main Page
  * 
- * SVG icons are commented out.
- * Replace them later with <img src="icons/...">
  */
 ?>
 
@@ -67,16 +65,9 @@ Skip the wait, avoid overbooking, and explore the city hands-free during your la
 
 <a class="btn btn--light" href="search.php">
 
-<!-- Icon removed -->
-
-<!-- <span class="btn__icon">🔎</span> -->
-
-<img src="images/icon-search.png" class="btn__icon">
-
-Find a Locker
+🔒 Find a Locker
 
 </a>
-
 
 <a class="btn btn--dark" href="reservations.php">
 

@@ -99,26 +99,28 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     <section class="support-cards">
       <article class="mini-card">
         <div class="mini-card__icon mini-card__icon--blue">
-          <img src="images/icon-faq.png" alt="">
+            ❓       
         </div>
+        <a href = "faq.php">
         <h3 class="mini-card__title">FAQ</h3>
+        </a>
         <p class="mini-card__text">Find answers to common questions</p>
       </article>
 
       <article class="mini-card">
         <div class="mini-card__icon mini-card__icon--green">
-          <img src="images/icon-phone.png" alt="">
+          ☎️        
         </div>
         <h3 class="mini-card__title">Call Us</h3>
         <p class="mini-card__text">
-          +1 (800) 123-4567<br>
+          +63 8816 6407<br>
           <span class="muted">Mon–Fri, 9AM–6PM EST</span>
         </p>
       </article>
 
       <article class="mini-card">
         <div class="mini-card__icon mini-card__icon--purple">
-          <img src="images/icon-email.png" alt="">
+          📧
         </div>
         <h3 class="mini-card__title">Email</h3>
         <p class="mini-card__text">
@@ -173,7 +175,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
       <section class="panel">
         <div class="panel__head panel__head--warn">
           <div class="warn-badge">
-            <img src="images/icon-warning.png" alt="">
+            📝
           </div>
           <div>
             <h2 class="panel__title">Report Locker Issue</h2>
@@ -181,7 +183,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
           </div>
         </div>
 
-        <!-- Later: action="issue_submit.php" method="POST" -->
         <form class="form" method="POST" action="">
           <label class="form__label">Reservation Number</label>
           <input class="form__control" type="text" name="reservation_no" placeholder="SL-2026-0001">

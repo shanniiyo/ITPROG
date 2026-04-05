@@ -6,8 +6,7 @@
 
     <div class="brand">
       <div class="brand__icon">
-        <!-- Replace later -->
-        <img src="images/logo.png" alt="SmartLocker Logo">
+        🔒
       </div>
       <a href="index.php" class="nav__item">
       <div  class="brand__name">SmartLocker</div>

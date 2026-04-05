@@ -35,14 +35,9 @@ $found_rsvp = null;
 define('PENALTY_PER_HOUR', 50.00);
 
 // ============================================================
-// WALK-IN RESERVATION (POST) — staff and sys_admin only
+// WALK-IN RESERVATION (POST)
 // ============================================================
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['action'] == 'walkin') {
-
-    if (!in_array($role, ['sys_admin', 'staff'])) {
-        $message  = "Access Denied: Only staff and system administrators can create walk-in reservations.";
-        $msg_type = 'error';
-    } else {
 
     $locker_id  = (int) $_POST['walkin_locker_id'];
     $user_id    = (int) $_POST['walkin_user_id'];
@@ -121,7 +116,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
             $msg_type = 'success';
         }
     }
-    } // end role check else
 }
 
 // ============================================================
@@ -205,14 +199,13 @@ if (isset($_GET['search']) && trim($_GET['search']) != '') {
         "SELECT rd.*, lr.size, lr.location, lr.pricer_per_hr,
                 u.full_name, u.email, u.phone_number,
                 la.access_code,
-                (SELECT SUM(p2.amount_paid) FROM payments p2
-                 WHERE p2.rsvp_id = rd.rsvp_id AND p2.payment_status = 'paid') AS amount_paid,
-                (SELECT payment_method FROM payments
-                 WHERE rsvp_id = rd.rsvp_id ORDER BY payment_id ASC LIMIT 1) AS payment_method
+                p.amount_paid, p.payment_method
          FROM rsvp_details rd
          JOIN locker_rsvp lr ON rd.locker_id = lr.locker_id
          JOIN users u ON rd.user_id = u.user_id
          LEFT JOIN locker_access la ON la.rsvp_id = rd.rsvp_id
+         LEFT JOIN payments p ON p.rsvp_id = rd.rsvp_id
+            AND p.payment_id = (SELECT MIN(payment_id) FROM payments WHERE rsvp_id = rd.rsvp_id)
          WHERE rd.rsvp_id = $lookup_id
          LIMIT 1"
     )->fetch_assoc();
@@ -367,7 +360,7 @@ function status_badge_class($status) {
                 <div class="di"><div class="di-label">Location</div><div class="di-value"><?php echo htmlspecialchars($r['location']); ?></div></div>
                 <div class="di"><div class="di-label">Check-in</div><div class="di-value"><?php echo date('M d, Y h:i A', strtotime($r['start_time'])); ?></div></div>
                 <div class="di"><div class="di-label">Check-out</div><div class="di-value"><?php echo date('M d, Y h:i A', strtotime($r['end_time'])); ?></div></div>
-                <div class="di"><div class="di-label">Total Paid (incl. extensions)</div><div class="di-value">₱<?php echo number_format($r['amount_paid'], 2); ?></div></div>
+                <div class="di"><div class="di-label">Amount Paid</div><div class="di-value">₱<?php echo number_format($r['amount_paid'], 2); ?></div></div>
                 <div class="di"><div class="di-label">Extensions</div><div class="di-value"><?php echo (int)$r['extn_count']; ?></div></div>
               </div>
 
@@ -411,8 +404,7 @@ function status_badge_class($status) {
         </div>
       </div>
 
-      <!-- RIGHT: Walk-in Reservation (staff and sys_admin only) -->
-      <?php if (in_array($role, ['sys_admin', 'staff'])): ?>
+      <!-- RIGHT: Walk-in Reservation -->
       <div>
         <div class="card-wrap">
           <h2>🚶 Walk-in Reservation</h2>
@@ -479,23 +471,12 @@ function status_badge_class($status) {
           </form>
         </div>
       </div>
-      <?php else: ?>
-      <div>
-        <div class="card-wrap">
-          <h2>🚶 Walk-in Reservation</h2>
-          <p style="font-size:13px; color:#94a3b8; margin:0;">
-            Walk-in reservations can only be created by Front Desk Staff or System Administrators.
-          </p>
-        </div>
-      </div>
-      <?php endif; ?>
 
     </div>
 
   </div>
 </div>
 
-<!-- Browser side only, No Node.js, Express, or server-side JS-->
 <script>
 function updateWalkinPrice() {
     const locker  = document.getElementById('walkin_locker_id');
