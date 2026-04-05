@@ -73,7 +73,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             $start_db = date('Y-m-d H:i:s', $start_ts);
             $conflict_sql = "SELECT rsvp_id FROM rsvp_details
                              WHERE locker_id=$locker_id
-                               AND status IN ('active','pending')
+                               AND status IN ('active')
                                AND NOT (end_time <= '$start_db' OR start_time >= '$end_str')
                              LIMIT 1";
             $conflict_res = mysqli_query($conn, $conflict_sql);

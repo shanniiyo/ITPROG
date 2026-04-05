@@ -1,10 +1,9 @@
 <?php
+session_start();
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
 include 'db_connect.php';
-
-session_start();
 include 'mailer.php';
 
 // Auto-expire reservations that have passed their end_time

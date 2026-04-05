@@ -28,27 +28,24 @@ $msg_type = '';
 if (isset($_GET['action']) && $_GET['action'] == 'cancel' && isset($_GET['rsvp_id'])) {
     $rsvp_id = (int) $_GET['rsvp_id'];
 
-    // Fetch the reservation to verify it belongs to this user
-    $check_sql = "SELECT rd.*, lr.locker_id as lid, lr.location
+    $check_sql = "SELECT rd.*, lr.location
                   FROM rsvp_details rd
                   JOIN locker_rsvp lr ON rd.locker_id = lr.locker_id
                   WHERE rd.rsvp_id=$rsvp_id AND rd.user_id=$user_id LIMIT 1";
     $check_res = mysqli_query($conn, $check_sql);
 
     if (mysqli_num_rows($check_res) == 1) {
-        $rsvp = mysqli_fetch_assoc($check_res);
+        $rsvp     = mysqli_fetch_assoc($check_res);
         $start_ts = strtotime($rsvp['start_time']);
         $now_ts   = time();
         $diff_hrs = ($start_ts - $now_ts) / 3600;
 
         if ($rsvp['status'] == 'active' && $diff_hrs > 12) {
-            // Cancel allowed — free up locker
             mysqli_query($conn, "UPDATE rsvp_details SET status='cancelled' WHERE rsvp_id=$rsvp_id");
             mysqli_query($conn, "UPDATE locker_rsvp SET status='available' WHERE locker_id=" . $rsvp['locker_id']);
 
-            // Send cancellation email
-            $u_res   = mysqli_query($conn, "SELECT email, full_name FROM users WHERE user_id=$user_id LIMIT 1");
-            $u_row   = mysqli_fetch_assoc($u_res);
+            $u_res    = mysqli_query($conn, "SELECT email, full_name FROM users WHERE user_id=$user_id LIMIT 1");
+            $u_row    = mysqli_fetch_assoc($u_res);
             $rsvp_num = 'SL-' . date('Y', strtotime($rsvp['created_at'])) . '-' . str_pad($rsvp_id, 6, '0', STR_PAD_LEFT);
             notify_cancellation($conn, $user_id, $rsvp_id, $u_row['email'], $u_row['full_name'], $rsvp_num, $rsvp['locker_id'], $rsvp['location']);
 
@@ -66,11 +63,10 @@ if (isset($_GET['action']) && $_GET['action'] == 'cancel' && isset($_GET['rsvp_i
 
 // ---- EXTEND FORM SUBMIT ----
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['action'] == 'extend') {
-    $rsvp_id    = (int) $_POST['rsvp_id'];
-    $extra      = (int) $_POST['extra_duration'];
-    $rate_type  = $_POST['extend_rate_type']; // 'hourly' or 'daily'
+    $rsvp_id   = (int) $_POST['rsvp_id'];
+    $extra     = (int) $_POST['extra_duration'];
+    $rate_type = $_POST['extend_rate_type'];
 
-    // Fetch reservation
     $fetch_sql = "SELECT rd.*, lr.pricer_per_hr
                   FROM rsvp_details rd
                   JOIN locker_rsvp lr ON rd.locker_id = lr.locker_id
@@ -80,11 +76,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
     if (mysqli_num_rows($fetch_res) == 1 && $extra >= 1) {
         $rsvp = mysqli_fetch_assoc($fetch_res);
 
-        $extra_hours  = ($rate_type == 'daily') ? $extra * 24 : $extra;
-        $new_end_ts   = strtotime($rsvp['end_time']) + ($extra_hours * 3600);
-        $new_end_str  = date('Y-m-d H:i:s', $new_end_ts);
-        $old_end_str  = $rsvp['end_time'];
-        $locker_id    = $rsvp['locker_id'];
+        $extra_hours = ($rate_type == 'daily') ? $extra * 24 : $extra;
+        $new_end_ts  = strtotime($rsvp['end_time']) + ($extra_hours * 3600);
+        $new_end_str = date('Y-m-d H:i:s', $new_end_ts);
+        $old_end_str = $rsvp['end_time'];
+        $locker_id   = $rsvp['locker_id'];
 
         // Check no conflict in the extended window
         $conflict_sql = "SELECT rsvp_id FROM rsvp_details
@@ -98,23 +94,30 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
             $message  = "Cannot extend — the locker is reserved by someone else during that time.";
             $msg_type = 'error';
         } else {
-            // Update end time and extension count
-            $new_count = (int)$rsvp['extn_count'] + 1;
-            mysqli_query($conn, "UPDATE rsvp_details SET end_time='$new_end_str', extn_count=$new_count WHERE rsvp_id=$rsvp_id");
+            // FIX: Update end_time, extension count, AND duration_select
+            $new_duration = (int)$rsvp['duration_select'] + $extra_hours;
+            $new_count    = (int)$rsvp['extn_count'] + 1;
+            mysqli_query($conn,
+                "UPDATE rsvp_details
+                 SET end_time='$new_end_str',
+                     extn_count=$new_count,
+                     duration_select=$new_duration
+                 WHERE rsvp_id=$rsvp_id"
+            );
 
-            // Add a payment record for the extension cost
             $price_per_hr = (float) $rsvp['pricer_per_hr'];
             $ext_cost     = $price_per_hr * $extra_hours;
             $tx_ref       = strtoupper(substr(md5(uniqid('ext', true)), 0, 12));
-            $pay_sql      = "INSERT INTO payments (rsvp_id, amount_paid, payment_method, payment_status, transaction_ref, rate_type)
-                             VALUES ($rsvp_id, $ext_cost, 'card', 'paid', '$tx_ref', '$rate_type')";
-            mysqli_query($conn, $pay_sql);
+            mysqli_query($conn,
+                "INSERT INTO payments (rsvp_id, amount_paid, payment_method, payment_status, transaction_ref, rate_type)
+                 VALUES ($rsvp_id, $ext_cost, 'card', 'paid', '$tx_ref', '$rate_type')"
+            );
 
-            // Send extension email
             $u_res    = mysqli_query($conn, "SELECT email, full_name FROM users WHERE user_id=$user_id LIMIT 1");
             $u_row    = mysqli_fetch_assoc($u_res);
             $rsvp_num = 'SL-' . date('Y', strtotime($rsvp['created_at'])) . '-' . str_pad($rsvp_id, 6, '0', STR_PAD_LEFT);
-            notify_extension($conn, $user_id, $rsvp_id, $u_row['email'], $u_row['full_name'], $rsvp_num, date('M d, Y h:i A', $new_end_ts), $extra, $rate_type, number_format($ext_cost, 2));
+            notify_extension($conn, $user_id, $rsvp_id, $u_row['email'], $u_row['full_name'], $rsvp_num,
+                date('M d, Y h:i A', $new_end_ts), $extra, $rate_type, number_format($ext_cost, 2));
 
             $message  = "Reservation extended to " . date('M d, Y h:i A', $new_end_ts) . ". Additional charge: ₱" . number_format($ext_cost, 2);
             $msg_type = 'success';
@@ -125,26 +128,33 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
     }
 }
 
-// ---- FETCH USER'S RESERVATIONS (active only — no past history per spec) ----
+// ---- FETCH USER'S RESERVATIONS (active + cancelled only — no past history per spec) ----
+// FIX: amount_paid uses SUM of all payments (original + extensions) instead of MIN(payment_id)
+// FIX: payment_method taken from the first/original payment only
 $rsvp_sql = "SELECT rd.*, lr.size, lr.location, lr.pricer_per_hr,
                     la.access_code,
-                    p.transaction_ref, p.payment_method, p.amount_paid
+                    p_first.transaction_ref,
+                    p_first.payment_method,
+                    p_total.total_paid AS amount_paid
              FROM rsvp_details rd
              JOIN locker_rsvp lr ON rd.locker_id = lr.locker_id
              LEFT JOIN locker_access la ON la.rsvp_id = rd.rsvp_id
-             LEFT JOIN payments p ON p.rsvp_id = rd.rsvp_id
+             LEFT JOIN payments p_first ON p_first.rsvp_id = rd.rsvp_id
+                AND p_first.payment_id = (SELECT MIN(payment_id) FROM payments WHERE rsvp_id = rd.rsvp_id)
+             LEFT JOIN (
+                SELECT rsvp_id, SUM(amount_paid) AS total_paid
+                FROM payments
+                WHERE payment_status = 'paid'
+                GROUP BY rsvp_id
+             ) p_total ON p_total.rsvp_id = rd.rsvp_id
              WHERE rd.user_id=$user_id
                AND rd.status IN ('active', 'cancelled')
              ORDER BY rd.created_at DESC";
-
-// Note: 'active' = upcoming or currently checked-in; 'cancelled' shown so user
-// can see they cancelled. 'completed'/'expired' are not shown per spec.
 $rsvp_res = mysqli_query($conn, $rsvp_sql);
 
-$size_labels = ['small' => 'Small', 'medium' => 'Medium', 'large' => 'Large'];
+$size_labels   = ['small' => 'Small', 'medium' => 'Medium', 'large' => 'Large'];
 $method_labels = ['card' => 'Card', 'ewallet' => 'E-Wallet'];
 
-// Status badge colours
 function status_badge($status) {
     $map = [
         'active'    => 'badge--green',
@@ -170,37 +180,38 @@ function status_badge($status) {
 
     .alert { padding: 13px 16px; border-radius: 10px; font-size: 14px; margin-bottom: 20px; }
     .alert--success { background: #ecfdf5; border: 1px solid #6ee7b7; color: #065f46; }
-    .alert--error { background: #fef2f2; border: 1px solid #fca5a5; color: #991b1b; }
+    .alert--error   { background: #fef2f2; border: 1px solid #fca5a5; color: #991b1b; }
 
     /* Reservation card */
-    .rsvp-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 16px; padding: 22px; margin-bottom: 16px; box-shadow: 0 4px 14px rgba(15,23,42,0.05); }
-    .rsvp-card__top { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 10px; margin-bottom: 14px; }
-    .rsvp-num { font-size: 18px; font-weight: 800; color: #0b58ff; }
-    .rsvp-locker { font-size: 14px; color: #475569; margin-top: 2px; }
+    .rsvp-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 16px; padding: 22px 24px; margin-bottom: 18px; box-shadow: 0 4px 14px rgba(15,23,42,0.05); }
+    .rsvp-card__top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; gap: 12px; }
+    .rsvp-num { font-size: 18px; font-weight: 800; color: #0b58ff; letter-spacing: 1px; }
+    .rsvp-locker { font-size: 13px; color: #64748b; margin-top: 3px; }
 
-    /* Badge */
-    .badge { display: inline-block; padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; text-transform: capitalize; }
-    .badge--green  { background: #dcfce7; color: #166534; }
-    .badge--red    { background: #fee2e2; color: #991b1b; }
-    .badge--gray   { background: #f1f5f9; color: #475569; }
+    /* Badges */
+    .badge { display: inline-flex; align-items: center; padding: 4px 12px; border-radius: 999px; font-size: 12px; font-weight: 700; flex-shrink: 0; }
+    .badge--green { background: #dcfce7; color: #166534; }
+    .badge--red   { background: #fee2e2; color: #991b1b; }
+    .badge--gray  { background: #f1f5f9; color: #475569; }
 
-    /* Detail grid */
-    .rsvp-details { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px; margin-bottom: 16px; }
+    /* Details grid */
+    .rsvp-details { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 14px; }
+    @media(max-width:600px){ .rsvp-details { grid-template-columns: 1fr 1fr; } }
     .detail-item { background: #f8fafc; border-radius: 10px; padding: 10px 12px; }
-    .detail-item .di-label { font-size: 11px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.4px; }
-    .detail-item .di-value { font-size: 14px; font-weight: 600; color: #0f172a; margin-top: 2px; }
+    .di-label { font-size: 11px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.4px; }
+    .di-value { font-size: 14px; font-weight: 600; color: #0f172a; margin-top: 3px; }
 
-    /* Access code */
-    .access-pill { display: inline-flex; align-items: center; gap: 8px; background: #fefce8; border: 1px solid #fde68a; border-radius: 8px; padding: 6px 12px; font-size: 13px; color: #92400e; font-family: monospace; font-weight: 700; letter-spacing: 3px; }
+    /* Access code pill */
+    .access-pill { display: inline-block; background: #fefce8; border: 1px solid #fde68a; border-radius: 8px; padding: 3px 12px; font-family: monospace; font-size: 16px; font-weight: 800; color: #b45309; letter-spacing: 3px; margin-left: 6px; }
 
-    /* Action buttons */
+    /* Action row */
     .rsvp-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; }
-    .btn-cancel { padding: 9px 16px; border-radius: 9px; background: #fff; color: #ef4444; border: 2px solid #fca5a5; font-weight: 700; font-size: 13px; cursor: pointer; text-decoration: none; }
+    .btn-cancel { padding: 9px 16px; border-radius: 9px; border: 1.5px solid #fca5a5; background: #fff; color: #dc2626; font-size: 13px; font-weight: 700; cursor: pointer; text-decoration: none; }
     .btn-cancel:hover { background: #fef2f2; }
-    .btn-extend { padding: 9px 16px; border-radius: 9px; background: linear-gradient(90deg,#0b58ff,#0ea5e9); color: #fff; border: none; font-weight: 700; font-size: 13px; cursor: pointer; }
+    .btn-extend { padding: 9px 16px; border-radius: 9px; border: none; background: linear-gradient(90deg,#0b58ff,#0ea5e9); color: #fff; font-size: 13px; font-weight: 700; cursor: pointer; }
     .btn-extend:hover { opacity: 0.9; }
 
-    /* Extend form (inline, hidden by default) */
+    /* Extend form */
     .extend-form { margin-top: 14px; padding: 16px; background: #f0f7ff; border: 1px solid #bfdbfe; border-radius: 12px; display: none; }
     .extend-form h4 { margin: 0 0 12px; font-size: 14px; font-weight: 700; color: #0f172a; }
     .extend-form .ef-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; }
@@ -238,14 +249,13 @@ function status_badge($status) {
     <?php else: ?>
       <?php while ($row = mysqli_fetch_assoc($rsvp_res)): ?>
         <?php
-          $rsvp_id   = $row['rsvp_id'];
-          $start_ts  = strtotime($row['start_time']);
-          $now_ts    = time();
-          $diff_hrs  = ($start_ts - $now_ts) / 3600;
+          $rsvp_id    = $row['rsvp_id'];
+          $start_ts   = strtotime($row['start_time']);
+          $now_ts     = time();
+          $diff_hrs   = ($start_ts - $now_ts) / 3600;
           $can_cancel = ($row['status'] == 'active' && $diff_hrs > 12);
           $can_extend = ($row['status'] == 'active');
-          // Generate reservation number from rsvp_id
-          $rsvp_num  = 'SL-' . date('Y', strtotime($row['created_at'])) . '-' . str_pad($rsvp_id, 6, '0', STR_PAD_LEFT);
+          $rsvp_num   = 'SL-' . date('Y', strtotime($row['created_at'])) . '-' . str_pad($rsvp_id, 6, '0', STR_PAD_LEFT);
         ?>
         <div class="rsvp-card">
           <div class="rsvp-card__top">
@@ -262,7 +272,6 @@ function status_badge($status) {
             </span>
           </div>
 
-          <!-- Details grid -->
           <div class="rsvp-details">
             <div class="detail-item">
               <div class="di-label">Check-in</div>
@@ -273,7 +282,8 @@ function status_badge($status) {
               <div class="di-value"><?php echo date('M d, Y h:i A', strtotime($row['end_time'])); ?></div>
             </div>
             <div class="detail-item">
-              <div class="di-label">Duration</div>
+              <div class="di-label">Total Duration</div>
+              <!-- FIX: duration_select now reflects extensions -->
               <div class="di-value"><?php echo $row['duration_select']; ?> hr(s)</div>
             </div>
             <div class="detail-item">
@@ -290,40 +300,35 @@ function status_badge($status) {
             </div>
           </div>
 
-          <!-- Access Code -->
           <?php if ($row['access_code']): ?>
-            <div>
+            <div style="margin-bottom:10px;">
               <span style="font-size:12px; font-weight:700; color:#64748b;">🔐 Access Code:</span>
               <span class="access-pill"><?php echo htmlspecialchars($row['access_code']); ?></span>
             </div>
           <?php endif; ?>
 
-          <!-- Action buttons -->
           <?php if ($row['status'] == 'active'): ?>
           <div class="rsvp-actions">
-
             <?php if ($can_cancel): ?>
               <a class="btn-cancel"
                  href="reservations.php?action=cancel&rsvp_id=<?php echo $rsvp_id; ?>"
                  onclick="return confirm('Are you sure you want to cancel this reservation?');">
                 ✕ Cancel Reservation
               </a>
-            <?php elseif ($diff_hrs > 0): ?>
+            <?php else: ?>
+              <!-- FIX: show warning regardless of whether check-in time has passed or not -->
               <span style="font-size:13px; color:#ef4444;">
-                ⚠ Cancellation not available — within 12 hours of check-in (no refund).
+                ⚠ Cancellation not available — within 12 hours of check-in or already started (no refund).
               </span>
             <?php endif; ?>
 
             <?php if ($can_extend): ?>
-              <button class="btn-extend"
-                      onclick="toggleExtend(<?php echo $rsvp_id; ?>)">
+              <button class="btn-extend" onclick="toggleExtend(<?php echo $rsvp_id; ?>)">
                 ⏱ Extend Reservation
               </button>
             <?php endif; ?>
-
           </div>
 
-          <!-- Extend form (hidden by default) -->
           <?php if ($can_extend): ?>
           <div class="extend-form" id="extend-<?php echo $rsvp_id; ?>">
             <h4>Extend Reservation</h4>
@@ -346,7 +351,7 @@ function status_badge($status) {
                   <button class="btn-confirm-extend" type="submit">Confirm Extension</button>
                 </div>
               </div>
-              <p style="font-size:12px; color:#3b82f6; margin: 8px 0 0;">
+              <p style="font-size:12px; color:#3b82f6; margin:8px 0 0;">
                 Current check-out: <?php echo date('M d, Y h:i A', strtotime($row['end_time'])); ?>
               </p>
               <p style="font-size:12px; color:#64748b; margin:4px 0 0;">
@@ -355,7 +360,7 @@ function status_badge($status) {
             </form>
           </div>
           <?php endif; ?>
-          <?php endif; // active status ?>
+          <?php endif; ?>
 
         </div>
       <?php endwhile; ?>

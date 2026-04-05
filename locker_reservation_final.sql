@@ -41,7 +41,8 @@ CREATE TABLE `admin_user` (
 
 INSERT INTO `admin_user` (`admin_id`, `username`, `password`, `full_name`, `role`) VALUES
 (1, 'johndoe1', '$2y$10$HDY0ET9NBXkH1A69YK8P8.WmkWZl.OfGerCAizJz7zoBFD40Qh4pS', 'John Doe', 'sys_admin'),
-(2, 'LaraCroft', '$2y$10$6VIOkhCQEXSQ9QbUpMA9ieGvNWTQgivnf9XYn.S3TYCh2sqzjDvVa', 'Lara Croft', 'staff');
+(2, 'LaraCroft', '$2y$10$6VIOkhCQEXSQ9QbUpMA9ieGvNWTQgivnf9XYn.S3TYCh2sqzjDvVa', 'Lara Croft', 'staff'),
+(3, 'JohnSmith', '$2y$10$6VIOkhCQEXSQ9QbUpMA9ieGvNWTQgivnf9XYn.S3TYCh2sqzjDvVa', 'John Smith', 'manager');
 
 -- --------------------------------------------------------
 

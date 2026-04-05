@@ -4,7 +4,7 @@ include 'db_connect.php';
 
 if (
     !isset($_SESSION['admin_id']) ||
-    !in_array($_SESSION['admin_role'], ['sys_admin', 'manager'])
+    $_SESSION['admin_role'] != 'sys_admin'
 ) {
     echo "<script>
             alert('Access Denied: You do not have permission to view this content.');

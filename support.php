@@ -28,22 +28,44 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     
     // for locker_reports
     else if (isset($_POST['locker_id'])) {
-        $rsvp_id = $_POST['reservation_no'];
-        $locker_id = $_POST['locker_id'];
-        $issue_type = $_POST['issue_type'];
+        $reservation_no_input = trim($_POST['reservation_no']);
+        $locker_id   = $_POST['locker_id'];
+        $issue_type  = $_POST['issue_type'];
         $description = $_POST['issue_desc'];
 
-        $stmt = $conn->prepare("INSERT INTO locker_reports (rsvp_id, locker_id, issue_type, description) VALUES (?, ?, ?, ?)");
-        $stmt->bind_param("ssss", $rsvp_id, $locker_id, $issue_type, $description);
-        
-        if ($stmt->execute()) {
-            $feedback_msg = "Locker report submitted. Our staff will check it shortly.";
+        // Extract numeric rsvp_id from format SL-YYYY-000001 → 1
+        // Also accepts a plain number entered directly
+        if (preg_match('/(\d+)$/', $reservation_no_input, $matches)) {
+            $rsvp_id = (int) $matches[1];
+        } else {
+            $rsvp_id = 0;
         }
-    } else {
-        $feedback_msg = "Error: Reservation #$rsvp_id was not found in our records.";
+
+        // Verify the rsvp_id actually exists in the DB
+        $check = $conn->prepare("SELECT rsvp_id FROM rsvp_details WHERE rsvp_id = ? LIMIT 1");
+        $check->bind_param("i", $rsvp_id);
+        $check->execute();
+        $check->store_result();
+
+        if ($rsvp_id > 0 && $check->num_rows > 0) {
+            // Get the locker_id from rsvp_details instead of trusting user input
+            $get_locker = $conn->prepare("SELECT locker_id FROM rsvp_details WHERE rsvp_id = ? LIMIT 1");
+            $get_locker->bind_param("i", $rsvp_id);
+            $get_locker->execute();
+            $locker_result = $get_locker->get_result();
+            $locker_row = $locker_result->fetch_assoc();
+            $verified_locker_id = $locker_row['locker_id'];
+    
+            $stmt = $conn->prepare("INSERT INTO locker_reports (rsvp_id, locker_id, issue_type, description) VALUES (?, ?, ?, ?)");
+            $stmt->bind_param("iiss", $rsvp_id, $verified_locker_id, $issue_type, $description);
+            if ($stmt->execute()) {
+                $feedback_msg = "Locker report submitted. Our staff will check it shortly.";
+            }
+        } else {
+            $feedback_msg = "Error: Reservation number not found. Please check and try again.";
+        }
     }
 }
-?>
 
 ?>
 <!doctype html>
@@ -105,6 +127,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         </p>
       </article>
     </section>
+
+    <!-- Feedback message -->
+    <?php if ($feedback_msg): ?>
+      <div style="max-width:980px; margin: 0 auto 16px; padding: 13px 16px; border-radius: 10px; background: #ecfdf5; border: 1px solid #6ee7b7; color: #065f46; font-size: 14px;">
+        <?php echo htmlspecialchars($feedback_msg); ?>
+      </div>
+    <?php endif; ?>
 
     <!-- Two-column forms -->
     <section class="support-grid">

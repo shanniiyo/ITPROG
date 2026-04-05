@@ -38,7 +38,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             VALUES ('$username', '$password_hash', '$full_name', '$role')";
 
     if (mysqli_query($conn, $sql)) {
-        echo "Admin created successfully. <a href='admin_dashboard.php'>Back</a>";
+        echo "Admin created successfully. <a href='dashboard.php'>Back to Dashboard</a>";
     } else {
         echo "Error: " . mysqli_error($conn);
     }
