@@ -4,7 +4,7 @@ include 'db_connect.php';
 
 if (
     !isset($_SESSION['admin_id']) ||
-    !in_array($_SESSION['admin_role'], ['sys_admin', 'staff'])
+    !in_array($_SESSION['admin_role'], ['sys_admin', 'manager', 'staff'])
 ) {
     echo "<script>
             alert('Access Denied: You do not have permission to view this content.');
@@ -29,10 +29,6 @@ if (!$row) {
     echo "<script>alert('Locker not found.'); window.location.href='dashboard.php';</script>";
     exit();
 }
-
-// Staff can only set status to 'out_of_service' (Maintenance/Disabled per spec)
-// sys_admin can change everything
-$staff_statuses = ['out_of_service'];  // what staff is allowed to set
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -52,6 +48,10 @@ $staff_statuses = ['out_of_service'];  // what staff is allowed to set
     <p style="font-size:13px; color:#64748b; text-align:center; margin-bottom:16px;">
       As staff, you can only update the locker status.
     </p>
+  <?php elseif ($role == 'manager'): ?>
+    <p style="font-size:13px; color:#64748b; text-align:center; margin-bottom:16px;">
+      As manager, you can update pricing and size only.
+    </p>
   <?php endif; ?>
 
   <form action="update_locker.php" method="POST">
@@ -70,12 +70,12 @@ $staff_statuses = ['out_of_service'];  // what staff is allowed to set
       </select>
 
       <label>Price per Hour (₱)</label>
-      <input type="number" step="10.00" name="pricer_per_hr" value="<?php echo $row['pricer_per_hr']; ?>" required>
+      <input type="number" step="0.01" name="pricer_per_hr" value="<?php echo $row['pricer_per_hr']; ?>" required>
 
       <label>Status</label>
       <select name="status">
-        <option value="available"    <?php echo $row['status']=='available'    ? 'selected' : ''; ?>>Available</option>
-        <option value="occupied"     <?php echo $row['status']=='occupied'     ? 'selected' : ''; ?>>Occupied</option>
+        <option value="available"      <?php echo $row['status']=='available'      ? 'selected' : ''; ?>>Available</option>
+        <option value="occupied"       <?php echo $row['status']=='occupied'       ? 'selected' : ''; ?>>Occupied</option>
         <option value="out_of_service" <?php echo $row['status']=='out_of_service' ? 'selected' : ''; ?>>Out of Service</option>
       </select>
 
@@ -85,14 +85,37 @@ $staff_statuses = ['out_of_service'];  // what staff is allowed to set
         <option value="0" <?php echo !$row['is_active'] ? 'selected' : ''; ?>>No (Disabled)</option>
       </select>
 
-    <?php else: ?>
-      <!-- staff: status only, pass other fields as hidden so update_locker.php can keep them -->
-      <input type="hidden" name="location"     value="<?php echo htmlspecialchars($row['location']); ?>">
-      <input type="hidden" name="size"         value="<?php echo $row['size']; ?>">
-      <input type="hidden" name="pricer_per_hr" value="<?php echo $row['pricer_per_hr']; ?>">
-      <input type="hidden" name="is_active"    value="<?php echo $row['is_active']; ?>">
+    <?php elseif ($role == 'manager'): ?>
+      <!-- manager: pricing and size only, all other fields hidden -->
+      <input type="hidden" name="location"  value="<?php echo htmlspecialchars($row['location']); ?>">
+      <input type="hidden" name="status"    value="<?php echo $row['status']; ?>">
+      <input type="hidden" name="is_active" value="<?php echo $row['is_active']; ?>">
 
       <!-- Read-only info -->
+      <label>Location</label>
+      <input type="text" value="<?php echo htmlspecialchars($row['location']); ?>" disabled>
+
+      <label>Status</label>
+      <input type="text" value="<?php echo ucfirst(str_replace('_', ' ', $row['status'])); ?>" disabled>
+
+      <!-- Editable: size and price -->
+      <label>Size</label>
+      <select name="size">
+        <option value="small"  <?php echo $row['size']=='small'  ? 'selected' : ''; ?>>Small</option>
+        <option value="medium" <?php echo $row['size']=='medium' ? 'selected' : ''; ?>>Medium</option>
+        <option value="large"  <?php echo $row['size']=='large'  ? 'selected' : ''; ?>>Large</option>
+      </select>
+
+      <label>Price per Hour (₱)</label>
+      <input type="number" step="0.01" name="pricer_per_hr" value="<?php echo $row['pricer_per_hr']; ?>" required>
+
+    <?php else: ?>
+      <!-- staff: status only -->
+      <input type="hidden" name="location"    value="<?php echo htmlspecialchars($row['location']); ?>">
+      <input type="hidden" name="size"        value="<?php echo $row['size']; ?>">
+      <input type="hidden" name="pricer_per_hr" value="<?php echo $row['pricer_per_hr']; ?>">
+      <input type="hidden" name="is_active"   value="<?php echo $row['is_active']; ?>">
+
       <label>Location</label>
       <input type="text" value="<?php echo htmlspecialchars($row['location']); ?>" disabled>
 
@@ -102,7 +125,6 @@ $staff_statuses = ['out_of_service'];  // what staff is allowed to set
       <label>Price per Hour</label>
       <input type="text" value="₱<?php echo number_format($row['pricer_per_hr'], 2); ?>" disabled>
 
-      <!-- Staff: only Maintenance / Out of Service -->
       <label>Status <span style="font-size:11px; color:#94a3b8;">(staff can only set to Out of Service)</span></label>
       <select name="status">
         <option value="out_of_service" <?php echo $row['status']=='out_of_service' ? 'selected' : ''; ?>>Out of Service / Maintenance</option>

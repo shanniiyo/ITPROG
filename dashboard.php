@@ -56,8 +56,8 @@ $result = mysqli_query($conn, $sql);
   <p><b>Active:</b> <?php echo $row['is_active'] ? 'Yes' : 'No'; ?></p>
 
   <div class="locker-actions">
-    <!-- sys_admin and staff can edit (staff restricted inside edit_locker.php) -->
-    <?php if (in_array($role, ['sys_admin', 'staff'])): ?>
+    <!-- sys_admin and staff & manager can edit (staff & manager restricted inside edit_locker.php) -->
+    <?php if (in_array($role, ['sys_admin', 'manager', 'staff'])): ?>
       <a href="edit_locker.php?id=<?php echo $row['locker_id']; ?>">Edit</a>
     <?php endif; ?>
 
